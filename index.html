@@ -9,7 +9,7 @@
     <title>Lena Zyskina - Visual Artist</title>
     <meta name="description"
         content="Dive into my 15+ year artistic journey, displaying a diverse selection of works inspired by global techniques, with pieces exhibited worldwide and in private collections.">
-    <link rel="canonical" href="https://bebinka.com/">
+    <link rel="canonical" id="canonical-link" href="https://bebinka.com/">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
@@ -17,7 +17,7 @@
     <meta property="og:description"
         content="Dive into my 15+ year artistic journey, displaying a diverse selection of works inspired by global techniques, with pieces exhibited worldwide and in private collections.">
     <meta property="og:image" content="https://framerusercontent.com/assets/2fhBqaQe3tq808c18cSGkyBVk.jpg">
-    <meta property="og:url" content="https://bebinka.com/">
+    <meta property="og:url" id="og-url" content="https://bebinka.com/">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
@@ -57,18 +57,39 @@
         loading="eager"></iframe>
     <script>
         (function () {
+            var siteOrigin = window.location.origin;
             var framerOrigin = "https://exciting-support-013821.framer.app";
             var iframe = document.getElementById("framer-site");
             var params = new URLSearchParams(window.location.search);
             var forwardedPath = params.get("framer_path");
-            var route = forwardedPath || (window.location.pathname + window.location.search + window.location.hash);
-            if (!route || route === "/") {
-                route = "/";
+
+            function normalizeRoute(route) {
+                if (!route) return "/";
+                var normalized = route.trim();
+                if (!normalized.startsWith("/")) {
+                    normalized = "/" + normalized;
+                }
+                if (normalized.startsWith("//")) {
+                    normalized = "/" + normalized.replace(/^\/+/, "");
+                }
+                return normalized;
             }
+
+            var currentRoute = window.location.pathname + window.location.search + window.location.hash;
+            var route = normalizeRoute(forwardedPath || currentRoute);
+            var framerUrl = new URL(route, framerOrigin).toString();
+
             if (forwardedPath) {
                 window.history.replaceState({}, "", route);
             }
-            iframe.src = framerOrigin + route;
+
+            var canonical = document.getElementById("canonical-link");
+            var ogUrl = document.getElementById("og-url");
+            var publicUrl = new URL(route, siteOrigin).toString();
+            canonical.setAttribute("href", publicUrl);
+            ogUrl.setAttribute("content", publicUrl);
+
+            iframe.src = framerUrl;
         })();
     </script>
 </body>
