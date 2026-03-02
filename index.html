@@ -52,9 +52,25 @@
 </head>
 
 <body>
-    <iframe src="https://exciting-support-013821.framer.app/"
+    <iframe id="framer-site"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen
         loading="eager"></iframe>
+    <script>
+        (function () {
+            var framerOrigin = "https://exciting-support-013821.framer.app";
+            var iframe = document.getElementById("framer-site");
+            var params = new URLSearchParams(window.location.search);
+            var forwardedPath = params.get("framer_path");
+            var route = forwardedPath || (window.location.pathname + window.location.search + window.location.hash);
+            if (!route || route === "/") {
+                route = "/";
+            }
+            if (forwardedPath) {
+                window.history.replaceState({}, "", route);
+            }
+            iframe.src = framerOrigin + route;
+        })();
+    </script>
 </body>
 
 </html>
