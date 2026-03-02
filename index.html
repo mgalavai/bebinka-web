@@ -60,6 +60,8 @@
             var siteOrigin = window.location.origin;
             var framerOrigin = "https://exciting-support-013821.framer.app";
             var iframe = document.getElementById("framer-site");
+            var canonical = document.getElementById("canonical-link");
+            var ogUrl = document.getElementById("og-url");
             var params = new URLSearchParams(window.location.search);
             var forwardedPath = params.get("framer_path");
 
@@ -75,21 +77,105 @@
                 return normalized;
             }
 
-            var currentRoute = window.location.pathname + window.location.search + window.location.hash;
-            var route = normalizeRoute(forwardedPath || currentRoute);
-            var framerUrl = new URL(route, framerOrigin).toString();
-
-            if (forwardedPath) {
-                window.history.replaceState({}, "", route);
+            function toRoute(value) {
+                if (typeof value !== "string" || !value.trim()) return null;
+                var input = value.trim();
+                try {
+                    var url = new URL(input);
+                    if (url.origin === framerOrigin) {
+                        return url.pathname + url.search + url.hash;
+                    }
+                    return null;
+                } catch (error) {
+                    return input;
+                }
             }
 
-            var canonical = document.getElementById("canonical-link");
-            var ogUrl = document.getElementById("og-url");
-            var publicUrl = new URL(route, siteOrigin).toString();
-            canonical.setAttribute("href", publicUrl);
-            ogUrl.setAttribute("content", publicUrl);
+            function extractRouteFromMessage(data) {
+                var payload = data;
+                if (typeof payload === "string") {
+                    var directRoute = toRoute(payload);
+                    if (directRoute) return directRoute;
+                    try {
+                        payload = JSON.parse(payload);
+                    } catch (error) {
+                        return null;
+                    }
+                }
 
-            iframe.src = framerUrl;
+                if (!payload || typeof payload !== "object") return null;
+
+                var candidates = [
+                    payload.path,
+                    payload.pathname,
+                    payload.route,
+                    payload.href,
+                    payload.url,
+                    payload.location
+                ];
+
+                for (var i = 0; i < candidates.length; i++) {
+                    var route = toRoute(candidates[i]);
+                    if (route) return route;
+                }
+
+                if (payload.location && typeof payload.location === "object") {
+                    var nestedRoute = toRoute(payload.location.href || payload.location.pathname);
+                    if (nestedRoute) return nestedRoute;
+                }
+
+                return null;
+            }
+
+            function getCurrentRoute() {
+                return window.location.pathname + window.location.search + window.location.hash;
+            }
+
+            function updateSeo(route) {
+                var publicUrl = new URL(route, siteOrigin).toString();
+                canonical.setAttribute("href", publicUrl);
+                ogUrl.setAttribute("content", publicUrl);
+            }
+
+            function updateIframe(route) {
+                var framerUrl = new URL(route, framerOrigin).toString();
+                if (iframe.src !== framerUrl) {
+                    iframe.src = framerUrl;
+                }
+            }
+
+            function replaceBrowserRoute(route) {
+                if (getCurrentRoute() !== route) {
+                    window.history.replaceState({}, "", route);
+                }
+            }
+
+            function applyRoute(route, options) {
+                var normalized = normalizeRoute(route);
+                updateSeo(normalized);
+                if (!options || options.updateIframe !== false) {
+                    updateIframe(normalized);
+                }
+                if (options && options.updateBrowser) {
+                    replaceBrowserRoute(normalized);
+                }
+            }
+
+            var initialRoute = normalizeRoute(forwardedPath || getCurrentRoute());
+            applyRoute(initialRoute, { updateIframe: true, updateBrowser: !!forwardedPath });
+
+            window.addEventListener("popstate", function () {
+                applyRoute(getCurrentRoute(), { updateIframe: true, updateBrowser: false });
+            });
+
+            window.addEventListener("message", function (event) {
+                if (event.origin !== framerOrigin) return;
+                var route = extractRouteFromMessage(event.data);
+                if (!route) return;
+                var normalized = normalizeRoute(route);
+                updateSeo(normalized);
+                replaceBrowserRoute(normalized);
+            });
         })();
     </script>
 </body>
